@@ -1,0 +1,41 @@
+version: "3"
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib-dev:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+      - ./output:/etc/output:rw
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318"
+    depends_on:
+     - jaeger
+
+  # http://localhost:16686/
+  jaeger:
+    image: jaegertracing/all-in-one:1.38
+    container_name: jaeger-all-in-one
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=9411
+      - COLLECTOR_OTLP_ENABLED=true
+    expose:
+      - 14250
+    ports:
+      - 16686:16686
+
+  # http://localhost:5001/ping
+  aspcore-service-a:
+    image: aspcore-service-a
+    ports:
+      - "5001:5001"
+    depends_on:
+      - otel-collector
+
+  aspcore-service-b:
+    image: aspcore-service-b
+    ports:
+      - "6001:6001"  
+    depends_on:
+      - otel-collector
